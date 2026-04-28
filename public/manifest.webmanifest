@@ -1,0 +1,16 @@
+{
+  "name": "quero.cloud — saguão",
+  "short_name": "quero.cloud",
+  "description": "Family-facing portal for the pleme-io homelab fleet",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
