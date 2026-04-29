@@ -1,0 +1,18 @@
+# Wrangler config for varanda — Cloudflare Pages SPA.
+#
+# Most of the project shape is owned by Pangea (see
+# pangea-architectures/workspaces/cloudflare-pleme/domains/quero.cloud.yaml's
+# `pages_apps[varanda]` entry). This file gives wrangler the project
+# name + the SPA fallback rule so client-side routing works on the
+# apex + every per-cluster portal hostname.
+
+name = "varanda"
+compatibility_date = "2026-04-29"
+pages_build_output_dir = "dist"
+
+# SPA mode — all routes serve index.html so varanda's hostname-keyed
+# router can pick the view mode (Fleet / Location / Cluster).
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
