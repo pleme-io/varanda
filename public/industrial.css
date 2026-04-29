@@ -1,0 +1,260 @@
+/*
+ * varanda — pleme-io industrial aesthetic
+ *
+ * Consumes ishou tokens exclusively (see /ishou-tokens.css).
+ * If you need a value that doesn't exist as a token, add it to
+ * ishou first; never hand-author colors / fonts / spacing here.
+ *
+ * Design language:
+ *   - Bold ink (#0A0A0A) on paper (#F5F5F0). High-contrast, monochrome.
+ *   - Mechanical: monospace display headers, sharp 1px ink borders,
+ *     no gradients. Hard `brand-bold` drop shadows on tiles.
+ *   - Industrial: tile grid feels like punched-card panels.
+ *     Aggressive whitespace, tight letter-spacing.
+ *   - Stylish + shadowy: the brand-bold offset shadow is the signature.
+ */
+
+/* ── reset ───────────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ── canvas ──────────────────────────────────────────────────────── */
+/*
+ * Default = ink (deep black) ground with paper text.
+ * The .light-mode class on <body> inverts to paper-on-ink for daytime.
+ */
+
+body {
+  background: var(--ishou-ink);
+  color: var(--ishou-paper);
+  font-family: var(--ishou-font-sans);
+  font-weight: var(--ishou-weight-regular);
+  line-height: var(--ishou-leading-base);
+  min-height: 100vh;
+  overflow-x: hidden;
+  /* Subtle scanline texture — industrial, mechanical. */
+  background-image:
+    linear-gradient(180deg,
+      transparent 0,
+      transparent 3px,
+      rgba(245, 245, 240, 0.012) 3px,
+      rgba(245, 245, 240, 0.012) 4px
+    );
+  background-size: 100% 4px;
+}
+
+body.light-mode {
+  background: var(--ishou-paper);
+  color: var(--ishou-ink);
+  background-image:
+    linear-gradient(180deg,
+      transparent 0,
+      transparent 3px,
+      rgba(10, 10, 10, 0.018) 3px,
+      rgba(10, 10, 10, 0.018) 4px
+    );
+}
+
+/* ── root container ─────────────────────────────────────────────── */
+
+.varanda-root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--ishou-space-12) var(--ishou-space-6);
+}
+
+/* ── header ─────────────────────────────────────────────────────── */
+/*
+ * The header carries the swerve mark + the title + the user pill.
+ * Bottom border is 2px ink/paper hairline — the only horizontal
+ * rule we use anywhere.
+ */
+
+.varanda-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ishou-space-6);
+  padding-bottom: var(--ishou-space-6);
+  border-bottom: 2px solid currentColor;
+  margin-bottom: var(--ishou-space-12);
+}
+
+.varanda-header h1 {
+  font-family: var(--ishou-font-display, var(--ishou-font-mono));
+  font-size: var(--ishou-text-2xl);
+  font-weight: var(--ishou-weight-bold);
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
+}
+
+/* The user pill — small, stamped, monospaced. */
+.varanda-user {
+  font-family: var(--ishou-font-mono);
+  font-size: var(--ishou-text-sm);
+  font-weight: var(--ishou-weight-medium);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  padding: var(--ishou-space-2) var(--ishou-space-4);
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+/* ── empty state ────────────────────────────────────────────────── */
+
+.varanda-empty {
+  font-family: var(--ishou-font-mono);
+  font-size: var(--ishou-text-base);
+  padding: var(--ishou-space-16) 0;
+  text-align: center;
+  opacity: 0.55;
+  letter-spacing: 0.02em;
+}
+
+/* ── group section ──────────────────────────────────────────────── */
+
+.varanda-group {
+  margin-bottom: var(--ishou-space-12);
+}
+
+.varanda-group h2 {
+  font-family: var(--ishou-font-mono);
+  font-size: var(--ishou-text-xs);
+  font-weight: var(--ishou-weight-bold);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: var(--ishou-space-4);
+  padding-bottom: var(--ishou-space-2);
+  border-bottom: 1px dashed currentColor;
+  opacity: 0.7;
+}
+
+/* ── tile grid ──────────────────────────────────────────────────── */
+/*
+ * Punched-card panels. Hard 1px ink border, brand-bold shadow on
+ * the bottom-right corner, no internal radius, slight hover lift.
+ */
+
+.varanda-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--ishou-space-6);
+}
+
+.varanda-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ishou-space-3);
+  padding: var(--ishou-space-6);
+  background: transparent;
+  color: currentColor;
+  text-decoration: none;
+  border: 2px solid currentColor;
+  border-radius: 0;
+  /* The signature brand-bold drop — hard, opaque, slightly offset. */
+  box-shadow: 6px 8px 0 0 currentColor;
+  transition: transform 80ms ease, box-shadow 80ms ease;
+  position: relative;
+}
+
+.varanda-tile:hover {
+  transform: translate(-2px, -3px);
+  box-shadow: 8px 11px 0 0 currentColor;
+}
+
+.varanda-tile:active {
+  transform: translate(2px, 3px);
+  box-shadow: 2px 3px 0 0 currentColor;
+}
+
+.varanda-tile-name {
+  font-family: var(--ishou-font-display, var(--ishou-font-mono));
+  font-size: var(--ishou-text-lg);
+  font-weight: var(--ishou-weight-bold);
+  letter-spacing: -0.01em;
+}
+
+.varanda-tile-desc {
+  font-family: var(--ishou-font-sans);
+  font-size: var(--ishou-text-sm);
+  opacity: 0.75;
+  line-height: var(--ishou-leading-tight);
+}
+
+.varanda-tile-host {
+  margin-top: auto;
+  padding-top: var(--ishou-space-3);
+  border-top: 1px dashed currentColor;
+  font-family: var(--ishou-font-mono);
+  font-size: var(--ishou-text-xs);
+  letter-spacing: 0.02em;
+  opacity: 0.6;
+  word-break: break-all;
+}
+
+/* ── responsive ─────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .varanda-root {
+    padding: var(--ishou-space-6) var(--ishou-space-4);
+  }
+  .varanda-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .varanda-header h1 {
+    font-size: var(--ishou-text-xl);
+  }
+  .varanda-tile-grid {
+    grid-template-columns: 1fr;
+    gap: var(--ishou-space-4);
+  }
+  .varanda-tile {
+    box-shadow: 4px 6px 0 0 currentColor;
+  }
+  .varanda-tile:hover {
+    box-shadow: 5px 8px 0 0 currentColor;
+  }
+}
+
+/* ── accessibility ──────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .varanda-tile {
+    transition: none;
+  }
+}
+
+.varanda-tile:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 4px;
+}
+
+/* ── swerve mark in header ──────────────────────────────────────── */
+
+.varanda-mark {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.varanda-mark svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 6;
+  stroke-linecap: square;
+}

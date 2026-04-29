@@ -14,6 +14,12 @@ pub enum ViewMode {
     },
 }
 
+/// Reserved single-label prefixes that map to Fleet view rather than
+/// being treated as a location name. `www` is the canonical web alias
+/// for the apex; future entries (e.g., `app`, `home`) can be added
+/// here without changing call sites.
+const FLEET_ALIASES: &[&str] = &["www", "app", "home"];
+
 #[must_use]
 pub fn from_host(host: &str) -> ViewMode {
     let labels: Vec<&str> = host.split('.').collect();
@@ -25,6 +31,7 @@ pub fn from_host(host: &str) -> ViewMode {
     let prefix = &labels[..labels.len() - 2];
     match prefix.len() {
         0 => ViewMode::Fleet, // shouldn't happen given len > 2 check
+        1 if FLEET_ALIASES.contains(&prefix[0]) => ViewMode::Fleet,
         1 => ViewMode::Location {
             location: prefix[0].into(),
         },
@@ -76,6 +83,25 @@ mod tests {
         assert_eq!(
             from_host("vault.rio.bristol.quero.cloud"),
             ViewMode::Fleet
+        );
+    }
+
+    #[test]
+    fn www_alias_resolves_to_fleet() {
+        assert_eq!(from_host("www.quero.cloud"), ViewMode::Fleet);
+    }
+
+    #[test]
+    fn other_fleet_aliases_resolve_to_fleet() {
+        assert_eq!(from_host("app.quero.cloud"), ViewMode::Fleet);
+        assert_eq!(from_host("home.quero.cloud"), ViewMode::Fleet);
+    }
+
+    #[test]
+    fn non_alias_single_prefix_is_still_location() {
+        assert_eq!(
+            from_host("bristol.quero.cloud"),
+            ViewMode::Location { location: "bristol".into() }
         );
     }
 }

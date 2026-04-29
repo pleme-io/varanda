@@ -17,6 +17,23 @@
 - The crachá REST client (consuming `cracha-core` types via wasm-compatible serde)
 - The passaporte JWT cookie reader
 - The Cloudflare Pages deploy artifact
+- The **industrial pleme-io aesthetic layer** in `public/industrial.css` — consumes ishou tokens exclusively
+
+## Design system
+
+varanda consumes [`ishou`](https://github.com/pleme-io/ishou) at build
+time (via the `ishou` flake input). The `flake.nix` runs
+`ishou render --target css` and writes to `public/ishou-tokens.css`,
+which `index.html` loads alongside the in-repo `public/industrial.css`
+override layer.
+
+**NEVER hand-author colors / fonts / spacing in this repo.** If you
+need a token that ishou doesn't have, add it to ishou first and
+regenerate. The full design language + expansion guide lives in
+[`docs/design.md`](docs/design.md).
+
+The aesthetic in one line: **ink-black on paper-white, mechanical
+industrial, bold, shadowy, swerve-marked.**
 
 ## What this repo does NOT own
 

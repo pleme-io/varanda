@@ -12,6 +12,13 @@ pub struct PortalProps {
     pub services: Vec<AccessibleService>,
 }
 
+/// The pleme-io swerve mark, rendered inline so it picks up
+/// `currentColor` from the active theme. Geometry is lifted from
+/// ishou's `Brand::pleme().swerve` (kept inline to avoid a runtime
+/// fetch of the SVG asset).
+const SWERVE_PATH: &str =
+    "M8 56 C 8 32, 24 8, 32 8 S 56 32, 56 56";
+
 #[function_component(Portal)]
 pub fn portal(props: &PortalProps) -> Html {
     let filtered = filter_for_mode(&props.services, &props.mode);
@@ -20,6 +27,11 @@ pub fn portal(props: &PortalProps) -> Html {
     html! {
         <main class="varanda-root">
             <header class="varanda-header">
+                <span class="varanda-mark" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                        <path d={SWERVE_PATH} />
+                    </svg>
+                </span>
                 <h1>{ title }</h1>
                 <span class="varanda-user">{ &props.user_display }</span>
             </header>

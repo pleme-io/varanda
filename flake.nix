@@ -18,20 +18,32 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
     };
+    # Design system — single source of truth for color, typography,
+    # spacing, shadow, motion, brand. Consumed via render to CSS at
+    # build time. NEVER hand-author colors / fonts / spacing here.
+    ishou = {
+      url = "github:pleme-io/ishou";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  # WASM build via substrate's wasm-build helpers (see rust-wasm skill).
-  # The skill notes there are several ways to wire wasm-pack into Nix;
-  # this scaffold uses the most direct shape — devShell with trunk +
-  # wasm-bindgen-cli, plus a `nix build` that runs `trunk build --release`.
-  outputs = {self, nixpkgs, crate2nix, flake-utils, substrate, fenix, ...}:
+  outputs = {self, nixpkgs, crate2nix, flake-utils, substrate, fenix, ishou, ...}:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
         rustToolchain = fenix.packages.${system}.stable.toolchain.override {
           targets = [ "wasm32-unknown-unknown" ];
         };
+
+        # Render the canonical pleme-io design tokens to CSS at build
+        # time. The output is byte-identical across every consumer.
+        ishouTokensCss = pkgs.runCommand "ishou-tokens.css" {} ''
+          ${ishou.packages.${system}.default}/bin/ishou render --target css --out $out
+        '';
       in {
+        # Expose the tokens for downstream tools (testing, preview, …).
+        packages.tokens-css = ishouTokensCss;
+
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             rustToolchain
@@ -40,9 +52,15 @@
             wasm-pack
             binaryen     # wasm-opt
           ];
+          shellHook = ''
+            # Refresh the tokens.css symlink so trunk picks them up.
+            mkdir -p public
+            ln -sf ${ishouTokensCss} public/ishou-tokens.css
+          '';
         };
 
-        # Production bundle. Output is dist/ with index.html + .wasm + .js.
+        # Production bundle. Output is dist/ with index.html + .wasm + .js +
+        # the rendered ishou tokens.
         packages.default = pkgs.stdenv.mkDerivation {
           pname = "varanda";
           version = "0.1.0";
@@ -50,6 +68,8 @@
           buildInputs = [ rustToolchain pkgs.trunk pkgs.wasm-bindgen-cli pkgs.binaryen ];
           buildPhase = ''
             export HOME=$TMPDIR
+            mkdir -p public
+            cp ${ishouTokensCss} public/ishou-tokens.css
             trunk build --release
           '';
           installPhase = ''
@@ -57,8 +77,5 @@
             cp -r dist/* $out/
           '';
         };
-
-        # Cloudflare Pages deploy via Wrangler — typed in shikumi later.
-        # apps.deploy-pages = ...
       });
 }
