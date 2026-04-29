@@ -31,9 +31,16 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        rustToolchain = fenix.packages.${system}.stable.toolchain.override {
-          targets = [ "wasm32-unknown-unknown" ];
-        };
+        # fenix combines per-target std libs with the host toolchain.
+        # The host toolchain provides cargo + rustc; the wasm32 target
+        # adds rust-std-wasm32 so cargo can build for that target.
+        rustToolchain = fenix.packages.${system}.combine [
+          fenix.packages.${system}.stable.cargo
+          fenix.packages.${system}.stable.rustc
+          fenix.packages.${system}.stable.rust-std
+          fenix.packages.${system}.stable.clippy
+          fenix.packages.${system}.targets.wasm32-unknown-unknown.stable.rust-std
+        ];
 
         # Render the canonical pleme-io design tokens to CSS at build
         # time. The output is byte-identical across every consumer.
