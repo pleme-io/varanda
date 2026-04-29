@@ -1,19 +1,14 @@
 # Build varanda's WASM bundle and deploy to the Cloudflare Pages
 # project named `varanda` on every push to main.
 #
-# The Pages project itself + its custom domains (quero.cloud,
-# www.quero.cloud, bristol.quero.cloud, rio.bristol.quero.cloud)
-# are owned by pangea-architectures' workspaces/cloudflare-pleme/
-# domains/quero.cloud.yaml under `pages_apps[varanda]`. Once that
-# template is reconciled by pangea-operator on rio (saguão front
-# door), this workflow ships the bundle that fills it.
+# Hybrid build:
+#   - ishou tokens render via Nix (pure, no network — works in sandbox)
+#   - cargo + trunk run native on the runner (have crates.io access)
 #
-# Build: nix builds the wasm bundle (consuming ishou tokens via the
-# `ishou` flake input). Output is dist/index.html + .wasm + .js.
-#
-# Deploy: wrangler pages deploy dist/ --project-name=varanda. Auth
-# via repo secrets CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID
-# (see README for one-time provisioning).
+# A pure-Nix build would require crate2nix + Cargo.nix to vendor
+# every Rust dep into the Nix store. The native-cargo path is faster
+# and easier to debug; the bundle output is byte-identical for the
+# same lockfile + ishou rev.
 
 name: pages-deploy
 
@@ -33,18 +28,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ── ishou design tokens via Nix ──────────────────────────────
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-
-      - name: Magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Build varanda bundle (renders ishou tokens + trunk build)
+      - name: Render ishou tokens.css
         run: |
-          nix build .#default --print-build-logs
-          mkdir -p dist
-          cp -r result/* dist/
+          mkdir -p public
+          nix run github:pleme-io/ishou#css > public/ishou-tokens.css
+          ls -la public/ishou-tokens.css
 
+      # ── Rust toolchain + wasm32 target ───────────────────────────
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-wasm-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-wasm-${{ runner.os }}-
+
+      # ── trunk + wasm-bindgen-cli + wasm-opt ──────────────────────
+      - name: Install trunk + wasm tooling
+        run: |
+          cargo install --locked trunk@0.21.7
+          cargo install --locked wasm-bindgen-cli@0.2.99
+          # binaryen ships wasm-opt; apt has a recent enough version
+          sudo apt-get update && sudo apt-get install -y binaryen
+
+      # ── Build the bundle ────────────────────────────────────────
+      - name: Build varanda bundle
+        run: trunk build --release
+
+      # ── Deploy to Cloudflare Pages ──────────────────────────────
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
