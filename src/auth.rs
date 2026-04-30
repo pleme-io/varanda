@@ -5,10 +5,12 @@
 //   1. User loads www.quero.cloud — varanda calls cracha/me.
 //   2a. cracha/me 200 → render the portal.
 //   2b. cracha/me 401 (no/invalid cookie) → render the sign-in
-//       screen with a "Sign in with Google" button.
+//       screen with a single "Sign in" button.
 //   3. Button → redirect to auth.quero.cloud's authorize endpoint.
-//      Authentik handles the Google OAuth dance and sets the
-//      *.quero.cloud session cookie on its callback domain.
+//      Authentik renders its own login page (username + password,
+//      and/or "Sign in with Google" depending on which sources are
+//      enabled in the blueprint). Authentik issues the session
+//      cookie on its callback domain.
 //   4. Authentik redirects back to www.quero.cloud/. varanda
 //       reloads, cracha/me now 200, portal renders.
 //
@@ -16,6 +18,11 @@
 // OIDC provider AND owns the redirect URI. Pages can't run server
 // code, but it doesn't need to: the cookie is already set by the
 // time the browser comes back here.
+//
+// Source-agnostic: this code is identical whether Authentik
+// authenticates the user via local username/password or Google
+// federation. The cosmetic flag below toggles only the button copy
+// + Google brand mark on the varanda landing screen.
 
 use yew::prelude::*;
 
@@ -32,6 +39,24 @@ pub fn passaporte_url() -> String {
     option_env!("PASSAPORTE_URL")
         .unwrap_or(DEFAULT_PASSAPORTE_URL)
         .to_string()
+}
+
+/// Build-time flag: render the Google brand mark + "Sign in with
+/// Google" copy on the landing screen. Default OFF — varanda shows
+/// a generic "Sign in" button that bounces to Authentik, which
+/// itself decides whether to show a password form, a Google tile,
+/// or both based on the blueprint's enabled sources.
+///
+/// Flip on: `VARANDA_GOOGLE_ENABLED=true trunk build --release` (or
+/// pass the env var through the flake's buildPhase). Must be paired
+/// with `enabled: true` on the Authentik blueprint's google-source
+/// entry, otherwise the button copy lies about the actual flow.
+#[must_use]
+fn google_branding_enabled() -> bool {
+    matches!(
+        option_env!("VARANDA_GOOGLE_ENABLED"),
+        Some("true" | "1" | "yes")
+    )
 }
 
 /// Build the authorize URL. Authentik's path is
@@ -68,6 +93,8 @@ pub fn sign_in_screen(props: &SignInScreenProps) -> Html {
         let _ = web_sys::window().and_then(|w| w.location().set_href(&url).ok());
     });
 
+    let google_branded = google_branding_enabled();
+
     html! {
         <main class="varanda-root varanda-signin">
             <header class="varanda-header">
@@ -85,22 +112,33 @@ pub fn sign_in_screen(props: &SignInScreenProps) -> Html {
                 <p class="varanda-signin-blurb">
                     { "Sign in to access your services in the saguão fleet." }
                 </p>
-                <button class="varanda-signin-button" onclick={on_click}>
-                    <span class="varanda-google-mark" aria-hidden="true">
-                        <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" fill="#EA4335"/>
-                            <path d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" fill="#4285F4"/>
-                            <path d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" fill="#FBBC05"/>
-                            <path d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" fill="#34A853"/>
-                        </svg>
-                    </span>
-                    <span>{ "Sign in with Google" }</span>
-                </button>
-                <p class="varanda-signin-fineprint">
-                    { "Authentication via Google. You'll be redirected to " }
-                    <code>{ "auth.quero.cloud" }</code>
-                    { ", sign in there once, and return here automatically." }
-                </p>
+                if google_branded {
+                    <button class="varanda-signin-button" onclick={on_click}>
+                        <span class="varanda-google-mark" aria-hidden="true">
+                            <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" fill="#EA4335"/>
+                                <path d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" fill="#4285F4"/>
+                                <path d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" fill="#FBBC05"/>
+                                <path d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" fill="#34A853"/>
+                            </svg>
+                        </span>
+                        <span>{ "Sign in with Google" }</span>
+                    </button>
+                    <p class="varanda-signin-fineprint">
+                        { "Authentication via Google. You'll be redirected to " }
+                        <code>{ "auth.quero.cloud" }</code>
+                        { ", sign in there once, and return here automatically." }
+                    </p>
+                } else {
+                    <button class="varanda-signin-button varanda-signin-button-plain" onclick={on_click}>
+                        <span>{ "Sign in to Saguão" }</span>
+                    </button>
+                    <p class="varanda-signin-fineprint">
+                        { "You'll be redirected to " }
+                        <code>{ "auth.quero.cloud" }</code>
+                        { " to enter your username and password, then returned here automatically." }
+                    </p>
+                }
             </section>
         </main>
     }
