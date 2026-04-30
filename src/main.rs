@@ -1,58 +1,87 @@
 // varanda — family-facing PWA entry point.
+//
+// State machine:
+//   Loading   → render spinner, fetch /me
+//   SignedOut → render SignInScreen (cracha returned 401 / network)
+//   SignedIn  → render Portal (+ AdminPanel when role=admin)
+//
+// The session cookie (X-Saguao-Session) is set by passaporte
+// (Authentik) on the *.quero.cloud domain. varanda doesn't read or
+// validate it — the cookie travels via `credentials: include` on
+// every cracha call, cracha JWT-validates server-side. This keeps
+// the WASM bundle free of crypto deps + means session lifetime is
+// fully controlled by passaporte.
 
 use varanda::{
-    api::accessible_services,
+    admin::AdminPanel,
+    api::{fetch_me, ApiError},
+    auth::SignInScreen,
     hostname::{from_host, ViewMode},
-    model::AccessibleService,
-    session::read_session,
+    model::{MeResponse, Role},
     view::Portal,
 };
 use yew::prelude::*;
 
+#[derive(Clone, PartialEq)]
+enum AuthState {
+    Loading,
+    SignedOut(Option<String>),
+    SignedIn(MeResponse),
+}
+
 #[function_component(App)]
 fn app() -> Html {
-    let mode = use_state(|| current_view_mode());
-    let services = use_state(|| Option::<Result<Vec<AccessibleService>, String>>::None);
-    let session = use_state(read_session);
+    let mode = use_state(current_view_mode);
+    let auth = use_state(|| AuthState::Loading);
 
     {
-        let services = services.clone();
-        let session_user = session.as_ref().map(|c| c.sub.clone());
-        use_effect_with(session_user.clone(), move |user_opt| {
-            if let Some(user) = user_opt.clone() {
-                let services = services.clone();
-                wasm_bindgen_futures::spawn_local(async move {
-                    let result = accessible_services(&user).await;
-                    services.set(Some(result));
-                });
-            }
+        let auth = auth.clone();
+        use_effect_with((), move |_| {
+            let auth = auth.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                match fetch_me().await {
+                    Ok(me) => auth.set(AuthState::SignedIn(me)),
+                    Err(ApiError::Unauthorized) => auth.set(AuthState::SignedOut(None)),
+                    Err(ApiError::Forbidden) => {
+                        auth.set(AuthState::SignedOut(Some("forbidden".into())));
+                    }
+                    Err(ApiError::Other(msg)) => {
+                        auth.set(AuthState::SignedOut(Some(format!("crachá: {msg}"))));
+                    }
+                }
+            });
             || ()
         });
     }
 
-    let user_display = session
-        .as_ref()
-        .and_then(|c| c.email.clone().or_else(|| Some(c.sub.clone())))
-        .unwrap_or_else(|| "guest".into());
-
-    match (*services).as_ref() {
-        None => html! {
-            <main class="varanda-root">
-                <h1>{ "loading…" }</h1>
-                if session.is_none() {
-                    <p>{ "Not signed in. " }<a href="/">{ "Sign in via passaporte" }</a></p>
-                }
+    match (*auth).clone() {
+        AuthState::Loading => html! {
+            <main class="varanda-root varanda-loading">
+                <p>{ "loading…" }</p>
             </main>
         },
-        Some(Ok(svcs)) => html! {
-            <Portal mode={(*mode).clone()} user_display={user_display} services={svcs.clone()} />
+        AuthState::SignedOut(notice) => html! {
+            <SignInScreen notice={notice} />
         },
-        Some(Err(e)) => html! {
-            <main class="varanda-root">
-                <h1>{ "couldn't reach crachá" }</h1>
-                <pre>{ e }</pre>
-            </main>
-        },
+        AuthState::SignedIn(me) => {
+            let user_display = if me.display_name.is_empty() {
+                me.email.clone()
+            } else {
+                me.display_name.clone()
+            };
+            html! {
+                <>
+                    <Portal
+                        mode={(*mode).clone()}
+                        user_display={user_display}
+                        services={me.services.clone()}
+                    />
+                    if me.role == Role::Admin {
+                        <AdminPanel />
+                    }
+                </>
+            }
+        }
     }
 }
 

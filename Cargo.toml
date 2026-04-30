@@ -8,9 +8,6 @@ repository = "https://github.com/pleme-io/varanda"
 authors = ["pleme-io <ops@pleme.io>"]
 description = "Family-facing PWA for the saguão fleet"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [[bin]]
 name = "varanda"
 path = "src/main.rs"
@@ -21,7 +18,7 @@ wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 gloo-net = "0.6"
 gloo-utils = "0.2"
-web-sys = { version = "0.3", features = ["Window", "Location", "Document", "HtmlDocument", "HtmlElement", "Storage", "RequestCredentials"] }
+web-sys = { version = "0.3", features = ["Window", "Location", "Document", "HtmlDocument", "HtmlElement", "HtmlInputElement", "HtmlSelectElement", "Storage", "RequestCredentials"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 console_error_panic_hook = "0.1"
