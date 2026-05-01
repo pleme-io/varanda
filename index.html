@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0A0A0A" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>quero.cloud — saguão</title>
 
     <!-- ishou tokens — the single source of truth for color, typography,
@@ -18,7 +17,17 @@
     <link rel="stylesheet" href="/industrial.css" />
 
     <link data-trunk rel="rust" data-bin="varanda" data-type="main" data-wasm-opt="0" />
-    <link data-trunk rel="copy-dir" href="public" />
+
+    <!-- Trunk asset pipeline: each file in public/ is copied into
+         dist/ ROOT (not dist/public/) so the references above resolve
+         at the served URLs `/ishou-tokens.css`, `/industrial.css`,
+         `/manifest.webmanifest`. The previous `rel="copy-dir"
+         href="public"` form copied to dist/public/ which 404'd every
+         reference. Per-file copy-file is the canonical Trunk idiom
+         for this layout. -->
+    <link data-trunk rel="copy-file" href="public/ishou-tokens.css" />
+    <link data-trunk rel="copy-file" href="public/industrial.css" />
+    <link data-trunk rel="copy-file" href="public/manifest.webmanifest" />
   </head>
   <body>
     <noscript>varanda requires JavaScript + WebAssembly.</noscript>

@@ -60,9 +60,14 @@
             binaryen     # wasm-opt
           ];
           shellHook = ''
-            # Refresh the tokens.css symlink so trunk picks them up.
+            # Refresh tokens.css for trunk. COPY (not symlink) so trunk's
+            # `data-trunk rel="copy-file"` resolves the canonical name to
+            # `ishou-tokens.css`, not the Nix-store-hashed basename of
+            # the symlink target. CI does the same via
+            # `nix run github:pleme-io/ishou#css > public/ishou-tokens.css`,
+            # so dist output is byte-identical between local + CI.
             mkdir -p public
-            ln -sf ${ishouTokensCss} public/ishou-tokens.css
+            install -m 0644 ${ishouTokensCss} public/ishou-tokens.css
           '';
         };
 
@@ -76,7 +81,7 @@
           buildPhase = ''
             export HOME=$TMPDIR
             mkdir -p public
-            cp ${ishouTokensCss} public/ishou-tokens.css
+            install -m 0644 ${ishouTokensCss} public/ishou-tokens.css
             trunk build --release
           '';
           installPhase = ''

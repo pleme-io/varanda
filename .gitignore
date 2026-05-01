@@ -6,3 +6,11 @@ result-*
 .envrc.local
 *.swp
 .DS_Store
+
+# Build artifact — local devShell shellHook (flake.nix) symlinks this
+# into public/ for `trunk serve` to find. CI re-renders it from
+# `nix run github:pleme-io/ishou#css` per pages-deploy.yml. Tracking
+# the symlink in git breaks CI (the symlink target is a /nix/store/
+# path that doesn't exist on the runner, so `> public/ishou-tokens.css`
+# returns Permission denied).
+/public/ishou-tokens.css
